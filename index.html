@@ -1233,7 +1233,7 @@
 
     function startNowLineUpdates() {
       if (nowLineInterval) clearInterval(nowLineInterval);
-      nowLineInterval = setInterval(updateNowLine, 60000); // Update every minute
+      nowLineInterval = setInterval(updateNowLine, 15000); // Update every 15 seconds
     }
 
     function scrollToNow() {
