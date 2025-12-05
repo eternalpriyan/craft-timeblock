@@ -446,6 +446,66 @@
       z-index: 100;
     }
 
+    /* Touch Drag Ghost */
+    .touch-drag-ghost {
+      position: fixed;
+      z-index: 1000;
+      pointer-events: none;
+      opacity: 0.9;
+      transform: scale(1.02);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .touch-drag-ghost.timeblock-ghost {
+      background: var(--block-bg);
+      border-radius: 4px;
+      padding: 8px 12px;
+      min-width: 150px;
+    }
+
+    .touch-drag-ghost.unscheduled-ghost {
+      background: var(--bg-secondary);
+      border-radius: 4px;
+      padding: 10px 12px;
+      min-width: 150px;
+    }
+
+    body.touch-dragging {
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    /* Swipe to delete */
+    .swipe-container {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .swipe-delete-bg {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      background: var(--error);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 16px;
+      color: white;
+      font-weight: 500;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .swipe-delete-bg.visible {
+      opacity: 1;
+    }
+
+    .swiping {
+      transform: translateX(0);
+      transition: transform 0.1s ease-out;
+    }
+
     /* Inline Edit Mode */
     .timeblock.editing {
       z-index: 50;
@@ -864,6 +924,11 @@
             <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
           </svg>
         </button>
+        <button class="icon-btn" id="add-task-btn" title="Add Task">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M12 4v16m-8-8h16"/>
+          </svg>
+        </button>
         <button class="icon-btn" id="settings-btn" title="Settings">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
@@ -936,6 +1001,12 @@
     let currentDragDuration = 1; // Duration of block being dragged (default 1 hour)
     let currentDragOffset = 0; // Y offset of mouse within dragged block
 
+    // Touch drag state
+    let touchDragData = null; // Data for the item being touch-dragged
+    let touchDragGhost = null; // Visual ghost element during touch drag
+    let touchDragSource = null; // The original element being dragged
+    let touchStartY = 0; // Starting Y position for swipe detection
+
     // DOM Elements
     const setupScreen = document.getElementById('setup-screen');
     const setupForm = document.getElementById('setup-form');
@@ -954,6 +1025,7 @@
     const unscheduledList = document.getElementById('unscheduled-list');
 
     const refreshBtn = document.getElementById('refresh-btn');
+    const addTaskBtn = document.getElementById('add-task-btn');
     const settingsBtn = document.getElementById('settings-btn');
     const retryBtn = document.getElementById('retry-btn');
 
@@ -1011,6 +1083,7 @@
     function setupEventListeners() {
       setupForm.addEventListener('submit', handleSetup);
       refreshBtn.addEventListener('click', loadSchedule);
+      addTaskBtn.addEventListener('click', addNewUnscheduledTask);
       settingsBtn.addEventListener('click', openSettings);
       retryBtn.addEventListener('click', loadSchedule);
       settingsCancel.addEventListener('click', closeSettings);
@@ -1649,6 +1722,71 @@
           el.classList.remove('dragging');
         });
 
+        // Touch drag and swipe for mobile
+        el.addEventListener('touchstart', (e) => {
+          const touchStartTime = Date.now();
+          const startTouch = e.touches[0];
+          const startX = startTouch.clientX;
+          const startY = startTouch.clientY;
+          let isSwiping = false;
+          let swipeTranslate = 0;
+
+          const checkForGesture = (moveEvent) => {
+            const moveTouch = moveEvent.touches[0];
+            const deltaX = moveTouch.clientX - startX;
+            const deltaY = moveTouch.clientY - startY;
+            const elapsed = Date.now() - touchStartTime;
+
+            // Detect swipe left
+            if (!isSwiping && deltaX < -20 && Math.abs(deltaX) > Math.abs(deltaY) * 2 && elapsed < 300) {
+              isSwiping = true;
+              moveEvent.preventDefault();
+            }
+
+            if (isSwiping) {
+              moveEvent.preventDefault();
+              swipeTranslate = Math.min(0, deltaX);
+              el.style.transform = `translateX(${swipeTranslate}px)`;
+              el.style.transition = 'none';
+              return;
+            }
+
+            // If held long enough and moved, start drag
+            if (elapsed > 150 && (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10)) {
+              el.removeEventListener('touchmove', checkForGesture);
+              startTouchDrag(moveEvent, {
+                type: 'unscheduled',
+                index: index,
+                blockId: item.id,
+                text: item.text,
+                checked: item.checked
+              }, el, false);
+            }
+          };
+
+          const cleanup = (endEvent) => {
+            el.removeEventListener('touchmove', checkForGesture);
+            el.removeEventListener('touchend', cleanup);
+            el.removeEventListener('touchcancel', cleanup);
+
+            if (isSwiping) {
+              el.style.transition = 'transform 0.2s ease-out';
+              if (swipeTranslate < -80) {
+                // Delete
+                el.style.transform = 'translateX(-100%)';
+                setTimeout(() => deleteUnscheduledItem(el), 200);
+              } else {
+                // Snap back
+                el.style.transform = 'translateX(0)';
+              }
+            }
+          };
+
+          el.addEventListener('touchmove', checkForGesture, { passive: false });
+          el.addEventListener('touchend', cleanup);
+          el.addEventListener('touchcancel', cleanup);
+        }, { passive: false });
+
         el.appendChild(checkbox);
         el.appendChild(text);
         unscheduledList.appendChild(el);
@@ -1754,8 +1892,73 @@
           el.classList.remove('dragging');
         });
 
-        // Note: Using HTML5 drag-and-drop for all drag operations
-        // Mouse-based drag removed to avoid conflict with HTML5 drag
+        // Touch drag and swipe for mobile
+        el.addEventListener('touchstart', (e) => {
+          if (!block || el.classList.contains('editing')) return;
+          const touchStartTime = Date.now();
+          const startTouch = e.touches[0];
+          const startX = startTouch.clientX;
+          const startY = startTouch.clientY;
+          let isSwiping = false;
+          let swipeTranslate = 0;
+
+          const checkForGesture = (moveEvent) => {
+            const moveTouch = moveEvent.touches[0];
+            const deltaX = moveTouch.clientX - startX;
+            const deltaY = moveTouch.clientY - startY;
+            const elapsed = Date.now() - touchStartTime;
+
+            // Detect swipe left (quick horizontal movement)
+            if (!isSwiping && deltaX < -20 && Math.abs(deltaX) > Math.abs(deltaY) * 2 && elapsed < 300) {
+              isSwiping = true;
+              moveEvent.preventDefault();
+            }
+
+            if (isSwiping) {
+              moveEvent.preventDefault();
+              swipeTranslate = Math.min(0, deltaX);
+              el.style.transform = `translateX(${swipeTranslate}px)`;
+              el.style.transition = 'none';
+              return;
+            }
+
+            // If held long enough and moved, start drag
+            if (elapsed > 150 && (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10)) {
+              el.removeEventListener('touchmove', checkForGesture);
+              startTouchDrag(moveEvent, {
+                type: 'scheduled',
+                index: blockIndex,
+                blockId: block.id,
+                title: block.title,
+                start: block.start,
+                end: block.end,
+                checked: block.checked || false
+              }, el, true);
+            }
+          };
+
+          const cleanup = (endEvent) => {
+            el.removeEventListener('touchmove', checkForGesture);
+            el.removeEventListener('touchend', cleanup);
+            el.removeEventListener('touchcancel', cleanup);
+
+            if (isSwiping) {
+              el.style.transition = 'transform 0.2s ease-out';
+              if (swipeTranslate < -80) {
+                // Delete
+                el.style.transform = 'translateX(-100%)';
+                setTimeout(() => deleteBlock(el), 200);
+              } else {
+                // Snap back
+                el.style.transform = 'translateX(0)';
+              }
+            }
+          };
+
+          el.addEventListener('touchmove', checkForGesture, { passive: false });
+          el.addEventListener('touchend', cleanup);
+          el.addEventListener('touchcancel', cleanup);
+        }, { passive: false });
 
         // Resize handles
         const topHandle = el.querySelector('.resize-handle-top');
@@ -2611,6 +2814,175 @@
       unscheduled.classList.remove('drag-over');
     });
 
+    // Touch drag support for mobile
+    function startTouchDrag(e, data, sourceElement, isTimeblock) {
+      e.preventDefault();
+
+      const touch = e.touches[0];
+      touchDragData = data;
+      touchDragSource = sourceElement;
+      touchStartY = touch.clientY;
+
+      // Set duration for timeblocks
+      if (isTimeblock && data.start !== undefined && data.end !== undefined) {
+        currentDragDuration = data.end - data.start;
+      } else {
+        currentDragDuration = 1;
+      }
+
+      // Calculate offset within the element
+      const rect = sourceElement.getBoundingClientRect();
+      currentDragOffset = touch.clientY - rect.top;
+
+      // Create ghost element
+      touchDragGhost = document.createElement('div');
+      touchDragGhost.className = 'touch-drag-ghost ' + (isTimeblock ? 'timeblock-ghost' : 'unscheduled-ghost');
+      touchDragGhost.textContent = data.title || data.text;
+      touchDragGhost.style.left = `${touch.clientX - 75}px`;
+      touchDragGhost.style.top = `${touch.clientY - 20}px`;
+      document.body.appendChild(touchDragGhost);
+
+      // Hide original and prevent scroll
+      sourceElement.classList.add('dragging');
+      document.body.classList.add('touch-dragging');
+
+      // Show unscheduled drop zone if dragging from timeline
+      if (isTimeblock && unscheduled.classList.contains('hidden')) {
+        unscheduledWasHidden = true;
+        unscheduled.classList.remove('hidden');
+        unscheduledList.innerHTML = '<div class="unscheduled-drop-indicator">Drop here to unschedule</div>';
+      }
+    }
+
+    function handleTouchMove(e) {
+      if (!touchDragData) return;
+      e.preventDefault();
+
+      const touch = e.touches[0];
+
+      // Move ghost
+      if (touchDragGhost) {
+        touchDragGhost.style.left = `${touch.clientX - 75}px`;
+        touchDragGhost.style.top = `${touch.clientY - 20}px`;
+      }
+
+      // Check if over timeline
+      const timelineRect = timelineTrack.getBoundingClientRect();
+      if (touch.clientX >= timelineRect.left && touch.clientX <= timelineRect.right &&
+          touch.clientY >= timelineRect.top && touch.clientY <= timelineRect.bottom) {
+
+        // Calculate drop position
+        const y = touch.clientY - timelineRect.top - currentDragOffset;
+        let startDecimal = y / HOUR_HEIGHT + START_HOUR;
+        startDecimal = Math.round(startDecimal * 4) / 4; // Snap to 15 min
+        startDecimal = Math.max(START_HOUR, Math.min(END_HOUR - currentDragDuration, startDecimal));
+
+        const top = (startDecimal - START_HOUR) * HOUR_HEIGHT;
+        const height = currentDragDuration * HOUR_HEIGHT;
+        const endDecimal = startDecimal + currentDragDuration;
+
+        // Show drop indicator
+        if (!dropIndicator) {
+          dropIndicator = document.createElement('div');
+          dropIndicator.className = 'drop-indicator';
+          timelineTrack.appendChild(dropIndicator);
+        }
+
+        dropIndicator.style.top = `${top}px`;
+        dropIndicator.style.height = `${height}px`;
+        dropIndicator.textContent = formatTimeRange(startDecimal, endDecimal);
+        timelineTrack.classList.add('drag-over');
+        unscheduled.classList.remove('drag-over');
+      } else {
+        // Remove timeline indicator
+        if (dropIndicator) {
+          dropIndicator.remove();
+          dropIndicator = null;
+        }
+        timelineTrack.classList.remove('drag-over');
+
+        // Check if over unscheduled
+        const unscheduledRect = unscheduled.getBoundingClientRect();
+        if (touch.clientX >= unscheduledRect.left && touch.clientX <= unscheduledRect.right &&
+            touch.clientY >= unscheduledRect.top && touch.clientY <= unscheduledRect.bottom) {
+          unscheduled.classList.add('drag-over');
+        } else {
+          unscheduled.classList.remove('drag-over');
+        }
+      }
+    }
+
+    async function endTouchDrag(e) {
+      if (!touchDragData) return;
+
+      const touch = e.changedTouches[0];
+
+      // Determine drop zone
+      const timelineRect = timelineTrack.getBoundingClientRect();
+      const unscheduledRect = unscheduled.getBoundingClientRect();
+
+      if (touch.clientX >= timelineRect.left && touch.clientX <= timelineRect.right &&
+          touch.clientY >= timelineRect.top && touch.clientY <= timelineRect.bottom) {
+        // Drop on timeline
+        const y = touch.clientY - timelineRect.top - currentDragOffset;
+        let startDecimal = y / HOUR_HEIGHT + START_HOUR;
+        startDecimal = Math.round(startDecimal * 4) / 4;
+        startDecimal = Math.max(START_HOUR, Math.min(END_HOUR - currentDragDuration, startDecimal));
+        const endDecimal = startDecimal + currentDragDuration;
+
+        if (touchDragData.type === 'scheduled') {
+          await repositionTimeblock(touchDragData, startDecimal, endDecimal);
+        } else if (touchDragData.type === 'unscheduled') {
+          await convertUnscheduledToTimeblock(touchDragData, startDecimal, startDecimal + 1);
+        }
+      } else if (touch.clientX >= unscheduledRect.left && touch.clientX <= unscheduledRect.right &&
+                 touch.clientY >= unscheduledRect.top && touch.clientY <= unscheduledRect.bottom) {
+        // Drop on unscheduled
+        if (touchDragData.type === 'scheduled') {
+          await convertTimeblockToUnscheduled(touchDragData);
+        }
+      }
+
+      // Cleanup
+      cleanupTouchDrag();
+    }
+
+    function cleanupTouchDrag() {
+      if (touchDragGhost) {
+        touchDragGhost.remove();
+        touchDragGhost = null;
+      }
+      if (touchDragSource) {
+        touchDragSource.classList.remove('dragging');
+        touchDragSource = null;
+      }
+      if (dropIndicator) {
+        dropIndicator.remove();
+        dropIndicator = null;
+      }
+
+      touchDragData = null;
+      document.body.classList.remove('touch-dragging');
+      timelineTrack.classList.remove('drag-over');
+      unscheduled.classList.remove('drag-over');
+
+      // Restore unscheduled visibility
+      if (unscheduledWasHidden) {
+        unscheduledWasHidden = false;
+        if (unscheduledBlocks.length === 0) {
+          unscheduled.classList.add('hidden');
+          unscheduledList.innerHTML = '';
+        } else {
+          renderUnscheduled(unscheduledBlocks);
+        }
+      }
+    }
+
+    // Global touch handlers
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', endTouchDrag);
+    document.addEventListener('touchcancel', cleanupTouchDrag);
+
     // Timeline drop zone - for dropping unscheduled items to become timeblocks
     timelineTrack.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -2845,6 +3217,11 @@
         renderUnscheduled(unscheduledBlocks);
         setupInteractions();
       }
+    }
+
+    // Add new unscheduled task from header button
+    function addNewUnscheduledTask() {
+      createInlineUnscheduledTask();
     }
 
     // Reposition timeblock within timeline (change time)
