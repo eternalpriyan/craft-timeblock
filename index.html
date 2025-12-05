@@ -412,10 +412,7 @@
     }
 
     .timeblock.dragging {
-      opacity: 0.8;
-      cursor: grabbing;
-      z-index: 100;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      opacity: 0;
     }
 
     .timeblock.hovered {
@@ -936,6 +933,8 @@
     let scheduledBlocks = []; // Store blocks with IDs for updates
     let unscheduledBlocks = []; // Store unscheduled items with IDs for updates
     let hoveredUnscheduledItem = null;
+    let currentDragDuration = 1; // Duration of block being dragged (default 1 hour)
+    let currentDragOffset = 0; // Y offset of mouse within dragged block
 
     // DOM Elements
     const setupScreen = document.getElementById('setup-screen');
@@ -2286,9 +2285,6 @@
           <div class="resize-handle resize-handle-bottom"></div>
         `;
 
-        // Setup interactions for this block
-        setupInteractions();
-
         const savedBlock = editingBlock;
         editingBlock = null;
 
@@ -2316,12 +2312,16 @@
             throw new Error(`Failed to create: ${response.status}`);
           }
 
-          // Parse response to get block ID
+          // Parse response to get block ID (API returns { items: [...] })
           const result = await response.json();
-          if (result.blocks && result.blocks[0] && result.blocks[0].id) {
-            newBlock.id = result.blocks[0].id;
+          const createdBlock = result.items?.[0] || result.blocks?.[0];
+          if (createdBlock?.id) {
+            newBlock.id = createdBlock.id;
             savedBlock.dataset.blockId = newBlock.id;
           }
+
+          // Now setup interactions - the block object has ID set
+          setupInteractions();
 
           showSyncStatus('saved', 'Created');
         } catch (err) {
@@ -2519,10 +2519,11 @@
             throw new Error(`Failed to create: ${response.status}`);
           }
 
-          // Parse response to get block ID
+          // Parse response to get block ID (API returns { items: [...] })
           const result = await response.json();
-          if (result.blocks && result.blocks[0] && result.blocks[0].id) {
-            newItem.id = result.blocks[0].id;
+          const createdBlock = result.items?.[0] || result.blocks?.[0];
+          if (createdBlock?.id) {
+            newItem.id = createdBlock.id;
             savedItem.dataset.blockId = newItem.id;
           }
 
@@ -2572,12 +2573,27 @@
     document.addEventListener('dragstart', (e) => {
       const timeblock = e.target.closest('.timeblock');
       if (timeblock && !timeblock.classList.contains('editing')) {
+        // Capture mouse offset within the block
+        const blockRect = timeblock.getBoundingClientRect();
+        currentDragOffset = e.clientY - blockRect.top;
+        // Capture duration from the block being dragged
+        const blockIndex = parseInt(timeblock.dataset.blockIndex);
+        if (!isNaN(blockIndex) && scheduledBlocks[blockIndex]) {
+          const block = scheduledBlocks[blockIndex];
+          currentDragDuration = block.end - block.start;
+        } else {
+          currentDragDuration = 1;
+        }
         // Show unscheduled section as a drop target
         if (unscheduled.classList.contains('hidden')) {
           unscheduledWasHidden = true;
           unscheduled.classList.remove('hidden');
           unscheduledList.innerHTML = '<div class="unscheduled-drop-indicator">Drop here to unschedule</div>';
         }
+      } else {
+        // Dragging unscheduled item - default 1 hour, no offset
+        currentDragDuration = 1;
+        currentDragOffset = 0;
       }
     });
 
@@ -2600,14 +2616,16 @@
       e.dataTransfer.dropEffect = 'move';
 
       try {
-        // Show drop indicator at cursor position
+        // Show drop indicator at cursor position, accounting for grab offset
         const rect = timelineTrack.getBoundingClientRect();
-        const y = e.clientY - rect.top;
+        const y = e.clientY - rect.top - currentDragOffset;
         let startDecimal = y / HOUR_HEIGHT + START_HOUR;
         startDecimal = Math.round(startDecimal * 4) / 4; // Snap to 15 min
-        startDecimal = Math.max(START_HOUR, Math.min(END_HOUR - 1, startDecimal));
+        startDecimal = Math.max(START_HOUR, Math.min(END_HOUR - currentDragDuration, startDecimal));
 
         const top = (startDecimal - START_HOUR) * HOUR_HEIGHT;
+        const height = currentDragDuration * HOUR_HEIGHT;
+        const endDecimal = startDecimal + currentDragDuration;
 
         if (!dropIndicator) {
           dropIndicator = document.createElement('div');
@@ -2616,7 +2634,8 @@
         }
 
         dropIndicator.style.top = `${top}px`;
-        dropIndicator.textContent = formatTimeRange(startDecimal, startDecimal + 1);
+        dropIndicator.style.height = `${height}px`;
+        dropIndicator.textContent = formatTimeRange(startDecimal, endDecimal);
         timelineTrack.classList.add('drag-over');
       } catch (err) {
         console.error('Dragover error:', err);
@@ -2646,12 +2665,12 @@
       try {
         const data = JSON.parse(e.dataTransfer.getData('text/plain'));
 
-        // Calculate drop time
+        // Calculate drop time, accounting for grab offset
         const rect = timelineTrack.getBoundingClientRect();
-        const y = e.clientY - rect.top;
+        const y = e.clientY - rect.top - currentDragOffset;
         let startDecimal = y / HOUR_HEIGHT + START_HOUR;
         startDecimal = Math.round(startDecimal * 4) / 4;
-        startDecimal = Math.max(START_HOUR, Math.min(END_HOUR - 1, startDecimal));
+        startDecimal = Math.max(START_HOUR, Math.min(END_HOUR - currentDragDuration, startDecimal));
 
         if (data.type === 'unscheduled') {
           // Convert unscheduled to timeblock
@@ -2722,9 +2741,14 @@
       };
       scheduledBlocks.push(newBlock);
 
+      // Clear hover states (old elements are being removed)
+      hoveredBlock = null;
+      hoveredUnscheduledItem = null;
+
       // Re-render both sections immediately
       renderTimeline(scheduledBlocks);
       renderUnscheduled(unscheduledBlocks);
+      setupInteractions();
 
       showSyncStatus('saving', 'Scheduling...');
 
@@ -2755,6 +2779,7 @@
         unscheduledBlocks.splice(data.index, 0, removedItem);
         renderTimeline(scheduledBlocks);
         renderUnscheduled(unscheduledBlocks);
+        setupInteractions();
       }
     }
 
@@ -2778,9 +2803,14 @@
       };
       unscheduledBlocks.push(newItem);
 
+      // Clear hover states (old elements are being removed)
+      hoveredBlock = null;
+      hoveredUnscheduledItem = null;
+
       // Re-render both sections immediately
       renderTimeline(scheduledBlocks);
       renderUnscheduled(unscheduledBlocks);
+      setupInteractions();
 
       showSyncStatus('saving', 'Unscheduling...');
 
@@ -2811,6 +2841,7 @@
         scheduledBlocks.splice(data.index, 0, removedBlock);
         renderTimeline(scheduledBlocks);
         renderUnscheduled(unscheduledBlocks);
+        setupInteractions();
       }
     }
 
