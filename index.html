@@ -848,69 +848,119 @@
     }
 
     .theme-toggle {
-      display: flex;
-      gap: 0.5rem;
+      display: inline-flex;
+      background: var(--input-bg);
+      border-radius: 20px;
+      padding: 3px;
+      border: 1px solid var(--border);
     }
 
     .theme-btn {
-      flex: 1;
-      padding: 0.625rem;
-      font-size: 0.8125rem;
-      font-weight: 500;
-      background: var(--input-bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 28px;
+      border: none;
+      border-radius: 16px;
+      background: transparent;
       color: var(--text-muted);
       cursor: pointer;
-      transition: all 0.15s;
+      transition: all 0.2s;
     }
 
-    .theme-btn:hover {
-      border-color: var(--text-muted);
+    .theme-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .theme-btn:hover:not(.active) {
+      color: var(--text);
     }
 
     .theme-btn.active {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: white;
+      background: var(--bg);
+      color: var(--text);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     }
 
-    .modal-actions {
-      display: flex;
-      gap: 0.5rem;
-      margin-top: 1.5rem;
+    .shortcuts-section {
+      margin-top: 1.25rem;
       padding-top: 1rem;
       border-top: 1px solid var(--border);
     }
 
-    .modal-actions button {
-      flex: 1;
-      padding: 0.625rem;
-      font-size: 0.875rem;
+    .shortcuts-section h3 {
+      font-size: 0.8125rem;
       font-weight: 500;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background 0.15s;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
     }
 
-    .modal-actions .cancel {
-      background: var(--bg-secondary);
+    .shortcut-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.375rem 0;
+      font-size: 0.8125rem;
+    }
+
+    .shortcut-action {
       color: var(--text);
+    }
+
+    .shortcut-key {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .modal-footer {
+      margin-top: 1.25rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .modal-footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .modal-footer a:hover {
+      text-decoration: underline;
+    }
+
+    .author-line {
+      margin-bottom: 0.375rem;
+    }
+
+    .time-range-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .time-range-row select {
+      flex: 1;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
+      background: var(--input-bg);
       border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      cursor: pointer;
     }
 
-    .modal-actions .cancel:hover {
-      background: var(--bg-tertiary);
+    .time-range-row select:focus {
+      outline: none;
+      border-color: var(--accent);
     }
 
-    .modal-actions .save {
-      background: var(--accent);
-      color: white;
-    }
-
-    .modal-actions .save:hover {
-      background: var(--accent-hover);
+    .time-range-sep {
+      color: var(--text-muted);
+      font-size: 0.8125rem;
     }
 
     .hidden { display: none !important; }
@@ -990,17 +1040,57 @@
       <div class="modal-section">
         <label>Theme</label>
         <div class="theme-toggle">
-          <button class="theme-btn" data-theme="dark">Dark</button>
-          <button class="theme-btn" data-theme="light">Light</button>
+          <button class="theme-btn" data-theme="dark" title="Dark mode">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+            </svg>
+          </button>
+          <button class="theme-btn" data-theme="light" title="Light mode">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="5"/>
+              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+            </svg>
+          </button>
         </div>
       </div>
       <div class="modal-section">
         <label for="settings-api-url">Craft API URL</label>
         <input type="url" id="settings-api-url">
       </div>
-      <div class="modal-actions">
-        <button class="cancel" id="settings-cancel">Cancel</button>
-        <button class="save" id="settings-save">Save</button>
+      <div class="modal-section">
+        <label>Timeline Range</label>
+        <div class="time-range-row">
+          <select id="settings-start-hour"></select>
+          <span class="time-range-sep">to</span>
+          <select id="settings-end-hour"></select>
+        </div>
+      </div>
+      <div class="shortcuts-section">
+        <h3>Shortcuts</h3>
+        <div class="shortcut-item">
+          <span class="shortcut-action">New task</span>
+          <span class="shortcut-key">Space</span>
+        </div>
+        <div class="shortcut-item">
+          <span class="shortcut-action">Create timeblock</span>
+          <span class="shortcut-key">Click empty timeline</span>
+        </div>
+        <div class="shortcut-item">
+          <span class="shortcut-action">Edit time</span>
+          <span class="shortcut-key">Drag edges</span>
+        </div>
+        <div class="shortcut-item">
+          <span class="shortcut-action">Move timeblock</span>
+          <span class="shortcut-key">Drag block</span>
+        </div>
+        <div class="shortcut-item">
+          <span class="shortcut-action">Delete</span>
+          <span class="shortcut-key">Backspace / Swipe left</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="author-line"><a href="https://github.com/eternalpriyan/craft-timeblock" target="_blank" rel="noopener">Craft Timeblock</a> by Nithya Priyan</div>
+        <a href="https://buymeacoffee.com/npsoy" target="_blank" rel="noopener">Buy me a coffee</a>
       </div>
     </div>
   </div>
@@ -1009,10 +1099,13 @@
     // Constants
     const STORAGE_KEY = 'craft-timeblock-api';
     const THEME_KEY = 'craft-timeblock-theme';
-    const START_HOUR = 6;  // 6 AM
-    const END_HOUR = 22;   // 10 PM
+    const TIME_SETTINGS_KEY = 'craft-timeblock-times';
     const HOUR_HEIGHT = 60; // pixels per hour
-    const TOTAL_HOURS = END_HOUR - START_HOUR;
+
+    // Configurable time range (loaded from localStorage)
+    let START_HOUR = 6;  // 6 AM default
+    let END_HOUR = 22;   // 10 PM default
+    let TOTAL_HOURS = END_HOUR - START_HOUR;
 
     // State
     let apiUrl = '';
@@ -1055,8 +1148,8 @@
 
     const settingsModal = document.getElementById('settings-modal');
     const settingsApiUrl = document.getElementById('settings-api-url');
-    const settingsCancel = document.getElementById('settings-cancel');
-    const settingsSave = document.getElementById('settings-save');
+    const settingsStartHour = document.getElementById('settings-start-hour');
+    const settingsEndHour = document.getElementById('settings-end-hour');
     const themeBtns = document.querySelectorAll('.theme-btn');
 
     // Initialize
@@ -1065,6 +1158,10 @@
       const savedTheme = localStorage.getItem(THEME_KEY);
       currentTheme = savedTheme || 'dark';
       applyTheme(currentTheme);
+
+      // Load time settings
+      loadTimeSettings();
+      populateTimeSelects();
 
       apiUrl = localStorage.getItem(STORAGE_KEY);
 
@@ -1076,6 +1173,62 @@
       }
 
       setupEventListeners();
+    }
+
+    // Time settings
+    function loadTimeSettings() {
+      const saved = localStorage.getItem(TIME_SETTINGS_KEY);
+      if (saved) {
+        const { start, end } = JSON.parse(saved);
+        START_HOUR = start;
+        END_HOUR = end;
+        TOTAL_HOURS = END_HOUR - START_HOUR;
+      }
+    }
+
+    function populateTimeSelects() {
+      // Populate hour options (0-23)
+      for (let h = 0; h <= 23; h++) {
+        const label = formatHourLabel(h);
+        const startOpt = document.createElement('option');
+        startOpt.value = h;
+        startOpt.textContent = label;
+        settingsStartHour.appendChild(startOpt);
+
+        const endOpt = document.createElement('option');
+        endOpt.value = h;
+        endOpt.textContent = label;
+        settingsEndHour.appendChild(endOpt);
+      }
+      settingsStartHour.value = START_HOUR;
+      settingsEndHour.value = END_HOUR;
+    }
+
+    function formatHourLabel(hour) {
+      if (hour === 0) return '12 AM';
+      if (hour === 12) return '12 PM';
+      if (hour < 12) return `${hour} AM`;
+      return `${hour - 12} PM`;
+    }
+
+    function saveTimeSettings() {
+      const newStart = parseInt(settingsStartHour.value);
+      const newEnd = parseInt(settingsEndHour.value);
+      if (newEnd <= newStart) return; // Invalid range
+
+      if (newStart !== START_HOUR || newEnd !== END_HOUR) {
+        START_HOUR = newStart;
+        END_HOUR = newEnd;
+        TOTAL_HOURS = END_HOUR - START_HOUR;
+        localStorage.setItem(TIME_SETTINGS_KEY, JSON.stringify({ start: START_HOUR, end: END_HOUR }));
+        updateTimelineHeight();
+        renderTimeAxis();
+        renderTimeline(scheduledBlocks);
+      }
+    }
+
+    function updateTimelineHeight() {
+      timelineTrack.style.minHeight = `${TOTAL_HOURS * HOUR_HEIGHT}px`;
     }
 
     // Theme
@@ -1110,10 +1263,31 @@
       addTaskBtn.addEventListener('click', addNewUnscheduledTask);
       settingsBtn.addEventListener('click', openSettings);
       retryBtn.addEventListener('click', loadSchedule);
-      settingsCancel.addEventListener('click', closeSettings);
-      settingsSave.addEventListener('click', saveSettings);
       settingsModal.addEventListener('click', (e) => {
         if (e.target === settingsModal) closeSettings();
+      });
+
+      // Auto-save API URL on blur or enter
+      settingsApiUrl.addEventListener('blur', saveSettings);
+      settingsApiUrl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          settingsApiUrl.blur();
+        }
+        if (e.key === 'Escape') {
+          closeSettings();
+        }
+      });
+
+      // Auto-save time settings on change
+      settingsStartHour.addEventListener('change', saveTimeSettings);
+      settingsEndHour.addEventListener('change', saveTimeSettings);
+
+      // Escape to close settings modal
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !settingsModal.classList.contains('hidden')) {
+          closeSettings();
+        }
       });
 
       // Theme buttons
@@ -1134,6 +1308,7 @@
       setupScreen.classList.add('hidden');
       app.classList.remove('hidden');
       setDateTitle();
+      updateTimelineHeight();
       renderTimeAxis();
     }
 
@@ -1185,6 +1360,8 @@
     // Settings
     function openSettings() {
       settingsApiUrl.value = apiUrl;
+      settingsStartHour.value = START_HOUR;
+      settingsEndHour.value = END_HOUR;
       settingsModal.classList.remove('hidden');
     }
 
@@ -1199,7 +1376,6 @@
         localStorage.setItem(STORAGE_KEY, apiUrl);
         loadSchedule();
       }
-      closeSettings();
     }
 
     // Date Title
