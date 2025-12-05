@@ -1746,20 +1746,21 @@
           el.classList.remove('dragging');
         });
 
-        // Touch drag and swipe for mobile (long press required)
+        // Touch drag and swipe for mobile
+        // Swipe left = immediate delete, Long press = drag to move
         el.addEventListener('touchstart', (e) => {
           const startTouch = e.touches[0];
           const startX = startTouch.clientX;
           const startY = startTouch.clientY;
-          let isReady = false;
+          let isDragReady = false;
           let isDragging = false;
           let isSwiping = false;
           let swipeTranslate = 0;
           let longPressTimer = null;
 
-          // Long press timer - after 200ms, ready for gestures
+          // Long press timer - after 200ms, ready for drag
           longPressTimer = setTimeout(() => {
-            isReady = true;
+            isDragReady = true;
             el.style.opacity = '0.7';
           }, 200);
 
@@ -1770,42 +1771,40 @@
 
             if (isDragging) return;
 
-            // Before long press, any movement cancels (allows scroll)
-            if (!isReady && (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10)) {
+            // Swipe left to delete (immediate, no long press needed)
+            if (!isSwiping && !isDragReady && deltaX < -15 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+              clearTimeout(longPressTimer);
+              isSwiping = true;
+            }
+
+            if (isSwiping) {
+              moveEvent.preventDefault();
+              swipeTranslate = Math.min(0, deltaX);
+              el.style.transform = `translateX(${swipeTranslate}px)`;
+              el.style.transition = 'none';
+              return;
+            }
+
+            // Before long press, vertical movement = scroll (cancel)
+            if (!isDragReady && Math.abs(deltaY) > 10) {
               clearTimeout(longPressTimer);
               cleanup();
               return;
             }
 
-            // After long press, detect gesture type
-            if (isReady) {
+            // After long press, any movement starts drag
+            if (isDragReady && (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5)) {
               moveEvent.preventDefault();
-
-              // Swipe left to delete
-              if (!isSwiping && !isDragging && deltaX < -10 && Math.abs(deltaX) > Math.abs(deltaY)) {
-                isSwiping = true;
-              }
-
-              if (isSwiping) {
-                swipeTranslate = Math.min(0, deltaX);
-                el.style.transform = `translateX(${swipeTranslate}px)`;
-                el.style.transition = 'none';
-                return;
-              }
-
-              // Drag to move (vertical or rightward movement)
-              if (Math.abs(deltaY) > 5 || deltaX > 5) {
-                isDragging = true;
-                el.style.opacity = '';
-                el.removeEventListener('touchmove', checkForGesture);
-                startTouchDrag(moveEvent, {
-                  type: 'unscheduled',
-                  index: index,
-                  blockId: item.id,
-                  text: item.text,
-                  checked: item.checked
-                }, el, false);
-              }
+              isDragging = true;
+              el.style.opacity = '';
+              el.removeEventListener('touchmove', checkForGesture);
+              startTouchDrag(moveEvent, {
+                type: 'unscheduled',
+                index: index,
+                blockId: item.id,
+                text: item.text,
+                checked: item.checked
+              }, el, false);
             }
           };
 
@@ -1937,21 +1936,22 @@
           el.classList.remove('dragging');
         });
 
-        // Touch drag and swipe for mobile (long press required)
+        // Touch drag and swipe for mobile
+        // Swipe left = immediate delete, Long press = drag to move
         el.addEventListener('touchstart', (e) => {
           if (!block || el.classList.contains('editing')) return;
           const startTouch = e.touches[0];
           const startX = startTouch.clientX;
           const startY = startTouch.clientY;
-          let isReady = false;
+          let isDragReady = false;
           let isDragging = false;
           let isSwiping = false;
           let swipeTranslate = 0;
           let longPressTimer = null;
 
-          // Long press timer - after 200ms, ready for gestures
+          // Long press timer - after 200ms, ready for drag
           longPressTimer = setTimeout(() => {
-            isReady = true;
+            isDragReady = true;
             el.style.opacity = '0.7';
           }, 200);
 
@@ -1962,44 +1962,42 @@
 
             if (isDragging) return;
 
-            // Before long press, any movement cancels (allows scroll)
-            if (!isReady && (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10)) {
+            // Swipe left to delete (immediate, no long press needed)
+            if (!isSwiping && !isDragReady && deltaX < -15 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+              clearTimeout(longPressTimer);
+              isSwiping = true;
+            }
+
+            if (isSwiping) {
+              moveEvent.preventDefault();
+              swipeTranslate = Math.min(0, deltaX);
+              el.style.transform = `translateX(${swipeTranslate}px)`;
+              el.style.transition = 'none';
+              return;
+            }
+
+            // Before long press, vertical movement = scroll (cancel)
+            if (!isDragReady && Math.abs(deltaY) > 10) {
               clearTimeout(longPressTimer);
               cleanup();
               return;
             }
 
-            // After long press, detect gesture type
-            if (isReady) {
+            // After long press, any movement starts drag
+            if (isDragReady && (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5)) {
               moveEvent.preventDefault();
-
-              // Swipe left to delete
-              if (!isSwiping && !isDragging && deltaX < -10 && Math.abs(deltaX) > Math.abs(deltaY)) {
-                isSwiping = true;
-              }
-
-              if (isSwiping) {
-                swipeTranslate = Math.min(0, deltaX);
-                el.style.transform = `translateX(${swipeTranslate}px)`;
-                el.style.transition = 'none';
-                return;
-              }
-
-              // Drag to move (vertical or rightward movement)
-              if (Math.abs(deltaY) > 5 || deltaX > 5) {
-                isDragging = true;
-                el.style.opacity = '';
-                el.removeEventListener('touchmove', checkForGesture);
-                startTouchDrag(moveEvent, {
-                  type: 'scheduled',
-                  index: blockIndex,
-                  blockId: block.id,
-                  title: block.title,
-                  start: block.start,
-                  end: block.end,
-                  checked: block.checked || false
-                }, el, true);
-              }
+              isDragging = true;
+              el.style.opacity = '';
+              el.removeEventListener('touchmove', checkForGesture);
+              startTouchDrag(moveEvent, {
+                type: 'scheduled',
+                index: blockIndex,
+                blockId: block.id,
+                title: block.title,
+                start: block.start,
+                end: block.end,
+                checked: block.checked || false
+              }, el, true);
             }
           };
 
@@ -2040,62 +2038,18 @@
           startResize(el, e, 'bottom', false);
         });
 
-        // Touch resize for mobile (long press required)
-        const setupResizeTouch = (handle, edge) => {
-          handle.addEventListener('touchstart', (e) => {
-            e.stopPropagation();
-            const startTouch = e.touches[0];
-            const startY = startTouch.clientY;
-            let isReady = false;
-            let isResizing = false;
-            let longPressTimer = null;
+        // Touch resize for mobile (immediate, no long press)
+        topHandle.addEventListener('touchstart', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          startResize(el, e, 'top', true);
+        }, { passive: false });
 
-            longPressTimer = setTimeout(() => {
-              isReady = true;
-              el.style.opacity = '0.7';
-            }, 200);
-
-            const onMove = (moveEvent) => {
-              const moveTouch = moveEvent.touches[0];
-              const deltaY = Math.abs(moveTouch.clientY - startY);
-
-              // Before long press, movement cancels
-              if (!isReady && deltaY > 10) {
-                clearTimeout(longPressTimer);
-                cleanup();
-                return;
-              }
-
-              // After long press, prevent scroll and start resize
-              if (isReady) {
-                moveEvent.preventDefault();
-                if (!isResizing && deltaY > 5) {
-                  isResizing = true;
-                  el.style.opacity = '';
-                  document.removeEventListener('touchmove', onMove);
-                  document.removeEventListener('touchend', cleanup);
-                  document.removeEventListener('touchcancel', cleanup);
-                  startResize(el, e, edge, true);
-                }
-              }
-            };
-
-            const cleanup = () => {
-              clearTimeout(longPressTimer);
-              el.style.opacity = '';
-              document.removeEventListener('touchmove', onMove);
-              document.removeEventListener('touchend', cleanup);
-              document.removeEventListener('touchcancel', cleanup);
-            };
-
-            document.addEventListener('touchmove', onMove, { passive: false });
-            document.addEventListener('touchend', cleanup);
-            document.addEventListener('touchcancel', cleanup);
-          }, { passive: false });
-        };
-
-        setupResizeTouch(topHandle, 'top');
-        setupResizeTouch(bottomHandle, 'bottom');
+        bottomHandle.addEventListener('touchstart', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          startResize(el, e, 'bottom', true);
+        }, { passive: false });
 
         // Checkbox handler for task timeblocks
         const checkbox = el.querySelector('.timeblock-checkbox');
