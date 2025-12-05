@@ -2064,14 +2064,17 @@
                 return;
               }
 
-              // After long press, start resize
-              if (isReady && !isResizing && deltaY > 5) {
-                isResizing = true;
-                el.style.opacity = '';
-                document.removeEventListener('touchmove', onMove);
-                document.removeEventListener('touchend', cleanup);
-                document.removeEventListener('touchcancel', cleanup);
-                startResize(el, e, edge, true);
+              // After long press, prevent scroll and start resize
+              if (isReady) {
+                moveEvent.preventDefault();
+                if (!isResizing && deltaY > 5) {
+                  isResizing = true;
+                  el.style.opacity = '';
+                  document.removeEventListener('touchmove', onMove);
+                  document.removeEventListener('touchend', cleanup);
+                  document.removeEventListener('touchcancel', cleanup);
+                  startResize(el, e, edge, true);
+                }
               }
             };
 
