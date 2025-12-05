@@ -1744,7 +1744,8 @@
             blockId: block.id,
             title: block.title,
             start: block.start,
-            end: block.end
+            end: block.end,
+            checked: block.checked || false
           }));
           e.dataTransfer.effectAllowed = 'move';
         });
@@ -2790,15 +2791,16 @@
         return;
       }
 
-      // Remove time, keep just the task
-      const newMarkdown = `- [ ] ${data.title}`;
+      // Remove time, keep just the task (preserve checked state)
+      const checkMark = data.checked ? 'x' : ' ';
+      const newMarkdown = `- [${checkMark}] ${data.title}`;
 
       // Update local state immediately (optimistic update)
       const removedBlock = scheduledBlocks.splice(data.index, 1)[0];
       const newItem = {
         id: data.blockId,
         text: data.title,
-        checked: false,
+        checked: data.checked || false,
         originalMarkdown: newMarkdown
       };
       unscheduledBlocks.push(newItem);
