@@ -1426,7 +1426,8 @@
         const testUrl = normalizeApiUrl(url);
         const response = await fetch(`${testUrl}/blocks?date=today`);
 
-        if (!response.ok) {
+        // 404 is OK - means no daily note yet (loadSchedule will create one)
+        if (!response.ok && response.status !== 404) {
           throw new Error(`API returned ${response.status}`);
         }
 
