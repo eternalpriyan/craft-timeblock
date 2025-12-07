@@ -50,7 +50,7 @@ Keep Timeblock open on a separate device next to your main screen. Add to Home S
 3. Select "Add to Home Screen"
 
 ### Local File
-Download `index.html` and open directly in your browser. No server required.
+Download `index.html` and open directly in your browser ([or visit the hosted version](https://eternalpriyan.github.io/craft-timeblock/)). No server required.
 
 ## Setup
 
@@ -60,13 +60,12 @@ You need the [Craft Imagine](https://developer.craft.do/) Daily Notes API runnin
 
 ### Quick Start
 
-1. Set up and run [Craft Imagine](https://developer.craft.do/)
-2. In the Imagine tab, go to **API for All Daily Notes**
-3. Set **Access Mode** to **"Public"** (not "API Key")
-4. Copy the URL
-5. Open `index.html` in your browser (or visit your hosted version)
-6. Paste your Craft Imagine API URL
-7. Your daily note's timeblocks appear on the timeline
+1. In the Imagine tab, go to **API for All Daily Notes**
+2. Set **Access Mode** to **"Public"** (not "API Key")
+3. Copy the URL
+4. Open `index.html` in your browser ([or visit the hosted version](https://eternalpriyan.github.io/craft-timeblock/))
+5. Paste your Craft Imagine API URL
+6. Your daily note's timeblocks appear on the timeline
 
 ## Keyboard Shortcuts
 
@@ -74,10 +73,10 @@ You need the [Craft Imagine](https://developer.craft.do/) Daily Notes API runnin
 |-----|--------|
 | `←` | Previous day |
 | `→` | Next day |
-| `R` | Refresh |
-| `N` | New unscheduled task |
-| `,` | Open settings |
-| `Esc` | Close modal / Cancel edit |
+| `Spacebar` | Refresh |
+| `Backspace` | Delete Task/ Timeblock |
+| `Click on Empty Space` | Create New Timeblock |
+| `Drag Block` | Change Timings |
 
 ## Writing Timeblocks in Craft
 
@@ -100,15 +99,12 @@ Or write time ranges manually in any of these formats:
 - [ ] Reply to emails
 ```
 
-Timeblocks are automatically categorized and color-coded based on keywords:
-- **Work** (blue): work, project, code, review, build, deploy...
-- **Meeting** (orange): meeting, call, sync, standup, 1:1...
-- **Personal** (purple): personal, errand, home, family...
-- **Health** (green): gym, workout, run, yoga, meditate...
+Timeblocks are automatically color-coded based on highlighting and coloring of your text in Craft Docs.
+Any changes in the time blocking view get automatically updated in your Daily Notes. Click the refresh button to have daily note changes updated in the Time blocking view.
 
 ## Configuration
 
-Open Settings (gear icon or `,` key) to:
+Open Settings (gear icon) to:
 - Switch between dark and light themes
 - Adjust timeline start and end hours
 - Update your Craft Connect API URL
@@ -127,10 +123,9 @@ Settings are stored in localStorage.
 
 Future enhancements being considered:
 
+- More Fuzzy Timings
 - **Move Timeblocks Between Days**: Drag a block to tomorrow or next week
 - **Seven-Day View**: See your entire week at a glance
-- **iCal/Google Calendar Sync**: Pull in external calendar events
-- **Recurring Timeblocks**: Templates for daily/weekly routines
 - **Time Tracking**: Log actual time spent vs planned
 - **Pomodoro Integration**: Built-in focus timer
 
