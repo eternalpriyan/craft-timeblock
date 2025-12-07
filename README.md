@@ -67,6 +67,16 @@ You need the [Craft Imagine](https://developer.craft.do/) Daily Notes API runnin
 5. Paste your Craft Imagine API URL
 6. Your daily note's timeblocks appear on the timeline
 
+## Troubleshooting
+
+If you encounter errors when entering your API URL, here's what they mean:
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| **400** | You've pasted a Docs API key instead of the Daily Notes API | Go to the Imagine tab and copy the URL from **"API for All Daily Notes"**, not a single document's API |
+| **401** | Access mode is set to "API Key" | Go to the Imagine tab → Daily Notes API → Set **Access Mode** to **"Public"** |
+| **404** | Typo in the API URL | Double-check the URL for any missing or incorrect characters |
+
 ## Keyboard Shortcuts
 
 | Key | Action |
