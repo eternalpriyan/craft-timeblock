@@ -101,8 +101,15 @@
       display: block;
       font-size: 0.8125rem;
       font-weight: 500;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.25rem;
       color: var(--text-muted);
+    }
+
+    .setup-hint {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--text-subtle);
+      margin-bottom: 0.5rem;
     }
 
     .setup-form input {
@@ -1003,6 +1010,7 @@
     <p>Connect your Craft daily notes to see your schedule as a beautiful timeline.</p>
     <form class="setup-form" id="setup-form">
       <label for="api-url">Craft API URL</label>
+      <small class="setup-hint">Imagine tab → API for All Daily Notes → set Access Mode to "Public" → copy URL</small>
       <input
         type="url"
         id="api-url"

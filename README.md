@@ -61,9 +61,12 @@ You need the [Craft Imagine](https://developer.craft.do/) Daily Notes API runnin
 ### Quick Start
 
 1. Set up and run [Craft Imagine](https://developer.craft.do/)
-2. Open `index.html` in your browser (or visit your hosted version)
-3. Enter your Craft Imagine API URL
-4. Your daily note's timeblocks appear on the timeline
+2. In the Imagine tab, go to **API for All Daily Notes**
+3. Set **Access Mode** to **"Public"** (not "API Key")
+4. Copy the URL
+5. Open `index.html` in your browser (or visit your hosted version)
+6. Paste your Craft Imagine API URL
+7. Your daily note's timeblocks appear on the timeline
 
 ## Keyboard Shortcuts
 
