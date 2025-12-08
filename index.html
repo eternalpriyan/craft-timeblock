@@ -1595,7 +1595,8 @@
       // Task separators: -, :, or just space
       // Minutes optional (defaults to :00)
       // Shared AM/PM: "10-11 AM" means both 10 AM and 11 AM
-      const timePattern = /^`?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:[-–—]+|to|->|→)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?`?\s*(?:[-–—:]|\s)\s*(.+)$/i;
+      // Supports optional bullet point prefix: •, -, *, +
+      const timePattern = /^(?:[•\-*+]\s+)?`?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:[-–—]+|to|->|→)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?`?\s*(?:[-–—:]|\s)\s*(.+)$/i;
 
       // Task with time pattern: - [x] `1:00 PM - 2:00 PM` Task name
       // Same flexibility as timePattern
