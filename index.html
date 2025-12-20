@@ -164,6 +164,8 @@
       border-radius: 8px;
       color: #f87171;
       font-size: 0.875rem;
+      white-space: pre-line;
+      text-align: left;
     }
 
     /* Main App */
@@ -969,6 +971,17 @@
       text-decoration: underline;
     }
 
+    .settings-error {
+      margin-top: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      background: rgba(220, 80, 80, 0.15);
+      border: 1px solid rgba(220, 80, 80, 0.3);
+      border-radius: 6px;
+      color: #f87171;
+      font-size: 0.75rem;
+      white-space: pre-line;
+    }
+
     .author-line {
       margin-bottom: 0.375rem;
     }
@@ -1106,6 +1119,7 @@
       <div class="modal-section">
         <label for="settings-api-url">Craft API URL</label>
         <input type="url" id="settings-api-url">
+        <div id="settings-api-error" class="settings-error hidden"></div>
       </div>
       <div class="modal-section">
         <label>Timeline Range</label>
@@ -1155,6 +1169,7 @@
     const THEME_KEY = 'craft-timeblock-theme';
     const TIME_SETTINGS_KEY = 'craft-timeblock-times';
     const HOUR_HEIGHT = 60; // pixels per hour
+    const DEMO_API_URL = 'https://connect.craft.do/links/RKIH3FTH94/api/v1';
 
     // Configurable time range (loaded from localStorage)
     let START_HOUR = 6;  // 6 AM default
@@ -1207,6 +1222,7 @@
 
     const settingsModal = document.getElementById('settings-modal');
     const settingsApiUrl = document.getElementById('settings-api-url');
+    const settingsApiError = document.getElementById('settings-api-error');
     const settingsStartHour = document.getElementById('settings-start-hour');
     const settingsEndHour = document.getElementById('settings-end-hour');
     const themeBtns = document.querySelectorAll('.theme-btn');
@@ -1222,14 +1238,17 @@
       loadTimeSettings();
       populateTimeSelects();
 
-      apiUrl = localStorage.getItem(STORAGE_KEY);
+      const savedApiUrl = localStorage.getItem(STORAGE_KEY);
 
-      if (apiUrl) {
-        showApp();
-        loadSchedule();
+      if (savedApiUrl) {
+        apiUrl = savedApiUrl;
       } else {
-        showSetup();
+        // Use demo API by default - no setup screen needed
+        apiUrl = DEMO_API_URL;
       }
+
+      showApp();
+      loadSchedule();
 
       setupEventListeners();
     }
@@ -1410,6 +1429,43 @@
       renderTimeAxis();
     }
 
+    // Validate URL format before connecting
+    function validateUrlFormat(url) {
+      // Check for MCP URL (wrong type)
+      if (url.includes('mcp.craft.do') || url.endsWith('/mcp')) {
+        return {
+          valid: false,
+          error: 'This is an MCP URL, not an API URL.\n\nGo to: Imagine tab → API for All Daily Notes → Copy the URL'
+        };
+      }
+
+      // Check for missing craft.do domain
+      if (!url.includes('craft.do')) {
+        return {
+          valid: false,
+          error: 'This doesn\'t look like a Craft URL.\n\nGo to: Imagine tab → API for All Daily Notes → Copy the URL'
+        };
+      }
+
+      return { valid: true };
+    }
+
+    // Get user-friendly error message based on status code
+    function getErrorMessage(status) {
+      switch (status) {
+        case 400:
+          return 'This API is for a single document, not Daily Notes.\n\nGo to: Imagine tab → "API for All Daily Notes" (not a single document\'s API)';
+        case 401:
+          return 'Access denied. Your API requires authentication.\n\nGo to: Imagine tab → Daily Notes API → Set Access Mode to "Public"';
+        case 403:
+          return 'Permission denied.\n\nGo to: Imagine tab → Daily Notes API → Check your access settings';
+        case 404:
+          return null; // 404 is OK - means no daily note yet
+        default:
+          return `API returned error ${status}. Please check your URL and try again.`;
+      }
+    }
+
     async function handleSetup(e) {
       e.preventDefault();
       const url = apiUrlInput.value.trim();
@@ -1422,13 +1478,20 @@
       btn.textContent = 'Connecting...';
 
       try {
-        // Validate by attempting to fetch
+        // Pre-validate URL format
+        const validation = validateUrlFormat(url);
+        if (!validation.valid) {
+          throw new Error(validation.error);
+        }
+
+        // Normalize and test the URL
         const testUrl = normalizeApiUrl(url);
         const response = await fetch(`${testUrl}/blocks?date=today`);
 
-        // 404 is OK - means no daily note yet (loadSchedule will create one)
+        // Check for specific error codes with helpful messages
         if (!response.ok && response.status !== 404) {
-          throw new Error(`API returned ${response.status}`);
+          const errorMsg = getErrorMessage(response.status);
+          throw new Error(errorMsg);
         }
 
         // Save and continue
@@ -1437,7 +1500,12 @@
         showApp();
         loadSchedule();
       } catch (err) {
-        setupError.textContent = `Could not connect: ${err.message}. Check your URL and try again.`;
+        // Handle network errors vs API errors
+        let errorText = err.message;
+        if (err.message === 'Failed to fetch') {
+          errorText = 'Could not reach Craft servers.\n\nCheck your internet connection and try again.';
+        }
+        setupError.textContent = errorText;
         setupError.classList.remove('hidden');
       } finally {
         btn.disabled = false;
@@ -1446,11 +1514,20 @@
     }
 
     function normalizeApiUrl(url) {
-      // Remove trailing slash and ensure it ends with api/v1
+      // Remove trailing slash
       url = url.replace(/\/+$/, '');
+
+      // If URL ends with /mcp, it's wrong type - but we already catch this in validation
+      // Just return as-is and let the API call fail with a helpful error
+
+      // Ensure it ends with /api/v1
       if (!url.endsWith('/api/v1')) {
         if (url.includes('/api/v1')) {
+          // Has /api/v1 somewhere - extract up to that point
           url = url.split('/api/v1')[0] + '/api/v1';
+        } else if (url.includes('connect.craft.do/links/')) {
+          // Looks like a Craft Connect URL without /api/v1 - add it
+          url = url + '/api/v1';
         }
       }
       return url;
@@ -1461,6 +1538,7 @@
       settingsApiUrl.value = apiUrl;
       settingsStartHour.value = START_HOUR;
       settingsEndHour.value = END_HOUR;
+      settingsApiError.classList.add('hidden');
       settingsModal.classList.remove('hidden');
     }
 
@@ -1468,10 +1546,40 @@
       settingsModal.classList.add('hidden');
     }
 
-    function saveSettings() {
+    async function saveSettings() {
       const newUrl = settingsApiUrl.value.trim();
+      settingsApiError.classList.add('hidden');
+
       if (newUrl && newUrl !== apiUrl) {
-        apiUrl = normalizeApiUrl(newUrl);
+        // Validate URL format first
+        const validation = validateUrlFormat(newUrl);
+        if (!validation.valid) {
+          settingsApiError.textContent = validation.error;
+          settingsApiError.classList.remove('hidden');
+          return;
+        }
+
+        // Test the connection
+        const testUrl = normalizeApiUrl(newUrl);
+        try {
+          const response = await fetch(`${testUrl}/blocks?date=today`);
+          if (!response.ok && response.status !== 404) {
+            const errorMsg = getErrorMessage(response.status);
+            settingsApiError.textContent = errorMsg;
+            settingsApiError.classList.remove('hidden');
+            return;
+          }
+        } catch (err) {
+          let errorText = err.message === 'Failed to fetch'
+            ? 'Could not reach Craft servers.\n\nCheck your internet connection.'
+            : err.message;
+          settingsApiError.textContent = errorText;
+          settingsApiError.classList.remove('hidden');
+          return;
+        }
+
+        // Success - save and reload
+        apiUrl = testUrl;
         localStorage.setItem(STORAGE_KEY, apiUrl);
         loadSchedule();
       }
