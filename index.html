@@ -982,6 +982,23 @@
       white-space: pre-line;
     }
 
+    .reset-demo-btn {
+      margin-top: 0.5rem;
+      padding: 0.375rem 0.75rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .reset-demo-btn:hover {
+      color: var(--text);
+      border-color: var(--text-muted);
+    }
+
     .author-line {
       margin-bottom: 0.375rem;
     }
@@ -1118,8 +1135,9 @@
       </div>
       <div class="modal-section">
         <label for="settings-api-url">Craft API URL</label>
-        <input type="url" id="settings-api-url">
+        <input type="url" id="settings-api-url" placeholder="Leave empty to use demo">
         <div id="settings-api-error" class="settings-error hidden"></div>
+        <button type="button" id="reset-to-demo-btn" class="reset-demo-btn">Reset to Demo</button>
       </div>
       <div class="modal-section">
         <label>Timeline Range</label>
@@ -1223,6 +1241,7 @@
     const settingsModal = document.getElementById('settings-modal');
     const settingsApiUrl = document.getElementById('settings-api-url');
     const settingsApiError = document.getElementById('settings-api-error');
+    const resetToDemoBtn = document.getElementById('reset-to-demo-btn');
     const settingsStartHour = document.getElementById('settings-start-hour');
     const settingsEndHour = document.getElementById('settings-end-hour');
     const themeBtns = document.querySelectorAll('.theme-btn');
@@ -1400,6 +1419,9 @@
       settingsStartHour.addEventListener('change', saveTimeSettings);
       settingsEndHour.addEventListener('change', saveTimeSettings);
 
+      // Reset to demo button
+      resetToDemoBtn.addEventListener('click', resetToDemo);
+
       // Escape to close settings modal
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !settingsModal.classList.contains('hidden')) {
@@ -1550,7 +1572,13 @@
       const newUrl = settingsApiUrl.value.trim();
       settingsApiError.classList.add('hidden');
 
-      if (newUrl && newUrl !== apiUrl) {
+      // Empty URL = reset to demo
+      if (!newUrl) {
+        resetToDemo();
+        return;
+      }
+
+      if (newUrl !== apiUrl) {
         // Validate URL format first
         const validation = validateUrlFormat(newUrl);
         if (!validation.valid) {
@@ -1583,6 +1611,14 @@
         localStorage.setItem(STORAGE_KEY, apiUrl);
         loadSchedule();
       }
+    }
+
+    function resetToDemo() {
+      localStorage.removeItem(STORAGE_KEY);
+      apiUrl = DEMO_API_URL;
+      settingsApiUrl.value = DEMO_API_URL;
+      settingsApiError.classList.add('hidden');
+      loadSchedule();
     }
 
     // Time Axis
